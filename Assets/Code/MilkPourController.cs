@@ -12,7 +12,9 @@ public class MilkPourController : MonoBehaviour
     [SerializeField] private float currentTiltAngle;
     [SerializeField] private bool spoutIsDown;
     [SerializeField] private bool isPouring;
-    
+    public bool IsHittingSurface { get; private set; }
+    public Vector3 CurrentSurfacePoint { get; private set; }
+
     [Header("Milk Stream")]
     [SerializeField] private LineRenderer milkStream;
     [SerializeField] private float streamLength = 2f;
@@ -61,6 +63,7 @@ public class MilkPourController : MonoBehaviour
     }
     private void UpdateMilkStream()
     {
+        IsHittingSurface = false;
         if (milkStream == null || pourPoint == null)
             return;
 
@@ -97,6 +100,11 @@ public class MilkPourController : MonoBehaviour
             if (isInside)
             {
                 endPoint = surfacePoint;
+                IsHittingSurface = true;
+                CurrentSurfacePoint = surfacePoint;
+                Vector2 surfaceUV = latteSurfaceMesh.WorldToSurfaceUV(surfacePoint);
+
+                Debug.Log($"우유 적중 UV: {surfaceUV}");
 
                 if (liquidFillController != null)
                 {

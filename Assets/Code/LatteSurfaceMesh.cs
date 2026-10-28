@@ -117,15 +117,8 @@ public class LatteSurfaceMesh : MonoBehaviour
                 transform.InverseTransformPoint(worldPoint);
 
             // 라떼아트용 UV는 중심 0.5, 0.5 기준으로 유지
-            float normalizedDistance =
-                maxSearchDistance > 0f
-                ? distance / maxSearchDistance
-                : 0f;
-
-            uv[i + 1] = new Vector2(
-                0.5f + Mathf.Cos(angle) * normalizedDistance * 0.5f,
-                0.5f + Mathf.Sin(angle) * normalizedDistance * 0.5f
-            );
+            // Mesh UV를 우유 적중 좌표의 UV 계산 방식과 통일
+            uv[i + 1] = WorldToSurfaceUV(worldPoint);
         }
 
         mesh.vertices = vertices;
@@ -234,5 +227,29 @@ public class LatteSurfaceMesh : MonoBehaviour
             ).magnitude;
 
         return radialDistance <= radiusAtHeight;
+    }
+    public Vector2 WorldToSurfaceUV(Vector3 worldPoint)
+    {
+        if (frustumTransform == null)
+            return new Vector2(0.5f, 0.5f);
+
+        // 월드 좌표를 CoffeeBase 로컬 좌표로 변환
+        Vector3 localPoint =
+            frustumTransform.InverseTransformPoint(worldPoint);
+
+        // 고정된 컵 기준 반지름 사용
+        float referenceRadius = Mathf.Max(
+            bottomRadius,
+            topRadius
+        );
+
+        // X/Z 좌표를 0~1 UV 공간으로 변환
+        float u = 0.5f + localPoint.x / (referenceRadius * 2f);
+        float v = 0.5f + localPoint.z / (referenceRadius * 2f);
+
+        return new Vector2(
+            Mathf.Clamp01(u),
+            Mathf.Clamp01(v)
+        );
     }
 }
