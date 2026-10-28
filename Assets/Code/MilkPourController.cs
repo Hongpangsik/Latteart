@@ -104,7 +104,7 @@ public class MilkPourController : MonoBehaviour
                 CurrentSurfacePoint = surfacePoint;
                 Vector2 surfaceUV = latteSurfaceMesh.WorldToSurfaceUV(surfacePoint);
 
-                Debug.Log($"우유 적중 UV: {surfaceUV}");
+               
 
                 if (liquidFillController != null)
                 {

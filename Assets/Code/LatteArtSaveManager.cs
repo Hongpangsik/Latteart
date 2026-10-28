@@ -78,4 +78,5 @@ public class LatteArtSaveManager : MonoBehaviour
 
         Debug.Log("라떼아트 저장 완료: " + filePath);
     }
+
 }
