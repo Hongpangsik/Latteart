@@ -44,6 +44,20 @@ public class LatteHeartController : MonoBehaviour
 
     private Vector2 finishStartUV;
     private Vector2 previousFinishUV;
+    private Vector2 finishEndUV;
+
+    public Vector2 HeartFinishDirection
+    {
+        get
+        {
+            Vector2 direction = finishEndUV - foamCenterUV;
+
+            if (direction.sqrMagnitude < 0.0001f)
+                return Vector2.down;
+
+            return direction.normalized;
+        }
+    }
 
     public bool HeartFinishDetected => heartFinishDetected;
 
@@ -131,6 +145,7 @@ public class LatteHeartController : MonoBehaviour
         passedFoamCenter = false;
         isHeartFoamStarted = false;
         isFoamSessionActive = false;
+        finishEndUV = Vector2.zero;
     }
     private void DetectHeartFinish(
     Vector2 currentUV,
@@ -254,6 +269,7 @@ public class LatteHeartController : MonoBehaviour
         if (crossedThroughCenter || pulledOutFromCenter)
         {
             heartFinishDetected = true;
+            finishEndUV = currentUV;
 
             Debug.Log(
                 pulledOutFromCenter

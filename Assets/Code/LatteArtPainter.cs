@@ -111,6 +111,11 @@ public class LatteArtPainter : MonoBehaviour
     private RenderTexture baseDrawingTexture;
     private RenderTexture heartCandidateTexture;
 
+    [Header("Heart Shape")]
+    [SerializeField] private float heartSizeMultiplier = 1.4f;
+
+    private bool heartRendered = false;
+
 
     private void Awake()
     {
@@ -180,6 +185,16 @@ public class LatteArtPainter : MonoBehaviour
         if (heartController != null)
         {
             heartController.TrackFinishMotion(uv, hitPoint);
+
+            if (heartController.HeartFinishDetected)
+            {
+                RenderFinishedHeart();
+
+                hasPreviousUV = false;
+                foamExpansion = 0f;
+
+                return;
+            }
         }
 
         // 기존 기울기 및 높이 기반 브러시 크기
@@ -468,6 +483,7 @@ public class LatteArtPainter : MonoBehaviour
         RenderTexture.active = previous;
         ClearLayerTexture(baseDrawingTexture);
         ClearLayerTexture(heartCandidateTexture);
+        heartRendered = false;
     }
 
     private void OnDestroy()
@@ -687,5 +703,127 @@ public class LatteArtPainter : MonoBehaviour
         ClearLayerTexture(heartCandidateTexture);
 
         CompositeDrawingLayers();
+    }
+    private void RenderFinishedHeart()
+    {
+        if (heartRendered ||
+            heartController == null ||
+            heartCandidateTexture == null)
+            return;
+
+        if (!heartController.HasFoamCenter)
+            return;
+
+        Vector2 center = heartController.FoamCenterUV;
+        float radius = heartController.FoamRadiusUV;
+        Vector2 direction = heartController.HeartFinishDirection;
+
+        if (radius <= 0f)
+            return;
+
+        // 하트의 뾰족한 끝이 마무리 이동 방향을 향하도록 회전
+        float angle = Mathf.Atan2(direction.y, direction.x)
+                      + Mathf.PI * 0.5f;
+
+        float cos = Mathf.Cos(angle);
+        float sin = Mathf.Sin(angle);
+
+        const int resolution = 256;
+
+        Texture2D heartTexture = new Texture2D(
+            resolution,
+            resolution,
+            TextureFormat.RGBA32,
+            false
+        );
+
+        heartTexture.filterMode = FilterMode.Bilinear;
+        heartTexture.wrapMode = TextureWrapMode.Clamp;
+
+        Color[] pixels = new Color[resolution * resolution];
+
+        // 간단한 안티앨리어싱을 위한 2x2 샘플링
+        for (int y = 0; y < resolution; y++)
+        {
+            for (int x = 0; x < resolution; x++)
+            {
+                float coverage = 0f;
+
+                for (int sy = 0; sy < 2; sy++)
+                {
+                    for (int sx = 0; sx < 2; sx++)
+                    {
+                        float px = (x + (sx + 0.5f) * 0.5f)
+                                   / resolution;
+
+                        float py = (y + (sy + 0.5f) * 0.5f)
+                                   / resolution;
+
+                        float dx = (px - 0.5f) * 2.7f;
+                        float dy = (py - 0.5f) * 2.7f;
+
+                        // 회전된 좌표를 하트의 로컬 좌표로 변환
+                        float localX = cos * dx + sin * dy;
+                        float localY = -sin * dx + cos * dy;
+
+                        // 하트 형태를 정의하는 음함수
+                        float a = localX * localX +
+                                  localY * localY - 1f;
+
+                        float shape =
+                            a * a * a -
+                            localX * localX *
+                            localY * localY * localY;
+
+                        if (shape <= 0f)
+                            coverage += 0.25f;
+                    }
+                }
+
+                Color color = brushColor;
+                color.a *= coverage;
+
+                pixels[y * resolution + x] = color;
+            }
+        }
+
+        heartTexture.SetPixels(pixels);
+        heartTexture.Apply();
+
+        // 기존 원형 거품 후보 제거
+        ClearLayerTexture(heartCandidateTexture);
+
+        // 거품 반경을 기준으로 하트 크기 결정
+        float diameter =
+            radius * 2f * heartSizeMultiplier * textureSize;
+
+        Rect rect = new Rect(
+            center.x * textureSize - diameter * 0.5f,
+            center.y * textureSize - diameter * 0.5f,
+            diameter,
+            diameter
+        );
+
+        RenderTexture previous = RenderTexture.active;
+
+        RenderTexture.active = heartCandidateTexture;
+
+        GL.PushMatrix();
+        GL.LoadPixelMatrix(0, textureSize, 0, textureSize);
+
+        Graphics.DrawTexture(rect, heartTexture);
+
+        GL.PopMatrix();
+
+        RenderTexture.active = previous;
+
+        Destroy(heartTexture);
+
+        // 최종 화면에 반영
+        CompositeDrawingLayers();
+
+        heartRendered = true;
+
+        Debug.Log("하트 형태 생성 완료!");
     }
 }
