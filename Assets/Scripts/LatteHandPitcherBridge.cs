@@ -9,6 +9,8 @@ using UnityEngine.XR.Hands;
 public class LatteHandPitcherBridge : MonoBehaviour
 {
     [SerializeField] private Transform pitcher;
+    [Tooltip("Transform of XR Origin (VR). Hand joint poses are relative to this origin.")]
+    [SerializeField] private Transform xrOrigin;
     [SerializeField] private MilkPourController milkPourController;
     [SerializeField] private bool useRightHand = true;
     [SerializeField] private float pinchThreshold = 0.03f;
@@ -31,7 +33,7 @@ public class LatteHandPitcherBridge : MonoBehaviour
 
     private void Update()
     {
-        if (milkPourController == null || pitcher == null || subsystem == null || !subsystem.running)
+        if (milkPourController == null || pitcher == null || xrOrigin == null || subsystem == null || !subsystem.running)
         {
             StopPouring();
             return;
@@ -57,7 +59,7 @@ public class LatteHandPitcherBridge : MonoBehaviour
         }
 
         // XR joint poses are tracking-space coordinates; convert through XR Origin.
-        Transform trackingOrigin = transform;
+        Transform trackingOrigin = xrOrigin;
         Vector3 targetPosition = trackingOrigin.TransformPoint(
             palmPose.position + palmPose.rotation * localPositionOffset);
         Quaternion targetRotation = trackingOrigin.rotation * palmPose.rotation *
