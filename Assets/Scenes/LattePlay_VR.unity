@@ -2332,16 +2332,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &239488352 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 2321527512367231968, guid: 3f7511fbc40ae7a4b89c3298a3de199d, type: 3}
-  m_PrefabInstance: {fileID: 239488351}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &240560845 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 141466980049140221, guid: b3ed8a0a703ebd34a9e44ed3d9f1fcf6, type: 3}
-  m_PrefabInstance: {fileID: 240560844}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &8000000021
 GameObject:
   m_ObjectHideFlags: 0
