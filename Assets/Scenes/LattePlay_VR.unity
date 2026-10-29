@@ -1340,6 +1340,7 @@ GameObject:
   - component: {fileID: 1541374776}
   - component: {fileID: 1541374777}
   - component: {fileID: 1541374778}
+  - component: {fileID: 8999999992}
   m_Layer: 0
   m_Name: LatteDrawingSystem
   m_TagString: Untagged
@@ -3035,6 +3036,23 @@ MonoBehaviour:
   rotationSmoothing: 12
   localPositionOffset: {x: 0, y: 0, z: 0}
   localEulerOffset: {x: 0, y: 0, z: 0}
+--- !u!114 &8999999992
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1541374772}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ca93f57e85a4c80b1fb85ce9a317dc1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::LatteVRDemoScore
+  painter: {fileID: 1541374776}
+  cup: {fileID: 1341120489}
+  xrOrigin: {fileID: 8000000221}
+  pinchThreshold: 0.03
+  resultHeight: 0.3
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
