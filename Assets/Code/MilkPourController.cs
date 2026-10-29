@@ -8,6 +8,21 @@ public class MilkPourController : MonoBehaviour
     [Header("Pour Settings")]
     [SerializeField] private float pourStartAngle = 45f;
 
+    [Header("Hand Tracking Input")]
+    [SerializeField] private bool requirePinchToPour = false;
+    private bool pinchPourAllowed;
+
+    public void SetPinchPourAllowed(bool allowed)
+    {
+        pinchPourAllowed = allowed;
+        if (!allowed && requirePinchToPour)
+        {
+            isPouring = false;
+            IsHittingSurface = false;
+            if (milkStream != null) milkStream.enabled = false;
+        }
+    }
+
     [Header("Debug")]
     [SerializeField] private float currentTiltAngle;
     [SerializeField] private bool spoutIsDown;
@@ -36,28 +51,29 @@ public class MilkPourController : MonoBehaviour
         if (pourPoint == null)
             return;
 
-        // ÇÇÃ³°¡ ¾ó¸¶³ª ±â¿ï¾îÁ³´ÂÁö
+        // í”¼ì²˜ê°€ ì–¼ë§ˆë‚˜ ê¸°ìš¸ì–´ì¡ŒëŠ”ì§€
         currentTiltAngle = Vector3.Angle(
             transform.up,
             Vector3.up
         );
 
-        // ÇÇÃ³ Áß½Éº¸´Ù PourPoint°¡ ¾Æ·¡¿¡ ÀÖ´ÂÁö È®ÀÎ
+        // í”¼ì²˜ ì¤‘ì‹¬ë³´ë‹¤ PourPointê°€ ì•„ë˜ì— ìˆëŠ”ì§€ í™•ì¸
         spoutIsDown = pourPoint.position.y < transform.position.y;
 
-        // ÃæºĞÈ÷ ±â¿ï¾ú°í + ÁÖµÕÀÌ°¡ ¾Æ·¡ÂÊÀÏ ¶§¸¸ º×±â
+        // ì¶©ë¶„íˆ ê¸°ìš¸ì—ˆê³  + ì£¼ë‘¥ì´ê°€ ì•„ë˜ìª½ì¼ ë•Œë§Œ ë¶“ê¸°
         bool shouldPour =
             currentTiltAngle >= pourStartAngle &&
-            spoutIsDown;
+            spoutIsDown &&
+            (!requirePinchToPour || pinchPourAllowed);
 
         if (shouldPour != isPouring)
         {
             isPouring = shouldPour;
 
             if (isPouring)
-                Debug.Log("¿ìÀ¯ º×±â ½ÃÀÛ");
+                Debug.Log("ìš°ìœ  ë¶“ê¸° ì‹œì‘");
             else
-                Debug.Log("¿ìÀ¯ º×±â Á¾·á");
+                Debug.Log("ìš°ìœ  ë¶“ê¸° ì¢…ë£Œ");
         }
         UpdateMilkStream();
     }
@@ -78,22 +94,22 @@ public class MilkPourController : MonoBehaviour
 
         Vector3 startPoint = pourPoint.position;
 
-        // ±âº»°ª: ±×³É ¾Æ·¡·Î ¶³¾îÁü
+        // ê¸°ë³¸ê°’: ê·¸ëƒ¥ ì•„ë˜ë¡œ ë–¨ì–´ì§
         Vector3 endPoint =
             startPoint + Vector3.down * streamLength;
 
-        // LatteSurface°¡ PourPointº¸´Ù ¾Æ·¡¿¡ ÀÖÀ» ¶§
+        // LatteSurfaceê°€ PourPointë³´ë‹¤ ì•„ë˜ì— ìˆì„ ë•Œ
         if (latteSurface != null && latteSurfaceMesh != null &&
             startPoint.y > latteSurface.position.y)
         {
-            // ¿ìÀ¯°¡ ¼öÁ÷À¸·Î ¶³¾îÁ³À» ¶§ ¼ö¸é°ú ¸¸³ª´Â À§Ä¡
+            // ìš°ìœ ê°€ ìˆ˜ì§ìœ¼ë¡œ ë–¨ì–´ì¡Œì„ ë•Œ ìˆ˜ë©´ê³¼ ë§Œë‚˜ëŠ” ìœ„ì¹˜
             Vector3 surfacePoint = new Vector3(
                 startPoint.x,
                 latteSurface.position.y,
                 startPoint.z
             );
 
-            // ±× À§Ä¡°¡ ½ÇÁ¦ ¼ö¸é ¿µ¿ª ¾ÈÀÌ¶ó¸é
+            // ê·¸ ìœ„ì¹˜ê°€ ì‹¤ì œ ìˆ˜ë©´ ì˜ì—­ ì•ˆì´ë¼ë©´
             bool isInside =
     latteSurfaceMesh.IsWorldPointInsideSurface(surfacePoint);
 
@@ -128,7 +144,7 @@ public class MilkPourController : MonoBehaviour
             else
             {
                 Debug.Log(
-                    $"¿ìÀ¯ ÀûÁß ½ÇÆĞ | " +
+                    $"ìš°ìœ  ì ì¤‘ ì‹¤íŒ¨ | " +
                     $"Pour XZ: {surfacePoint.x:F3}, {surfacePoint.z:F3} | " +
                     $"Surface Y: {surfacePoint.y:F3}"
                 );
