@@ -6,6 +6,7 @@ using UnityEngine.XR.Hands;
 /// Optional XR Hands bridge. Attach to a scene object and assign the pitcher
 /// and MilkPourController. Disabled or untracked hands never authorize pouring.
 /// </summary>
+[DefaultExecutionOrder(-100)]
 public class LatteHandPitcherBridge : MonoBehaviour
 {
     [SerializeField] private Transform pitcher;
@@ -33,6 +34,12 @@ public class LatteHandPitcherBridge : MonoBehaviour
 
     private void Update()
     {
+        if (subsystem == null || !subsystem.running)
+        {
+            var available = new List<XRHandSubsystem>();
+            SubsystemManager.GetSubsystems(available);
+            subsystem = available.Find(s => s.running);
+        }
         if (milkPourController == null || pitcher == null || xrOrigin == null || subsystem == null || !subsystem.running)
         {
             StopPouring();
