@@ -43,13 +43,13 @@ public class LatteArtPainter : MonoBehaviour
     [Header("Milk Surface Visibility")]
     [SerializeField] private bool useHeightVisibility = true;
 
-    // ÀÌ °Å¸® ÀÌÇÏ¸é Èò»ö ÆĞÅÏÀÌ »ı¼ºµÊ
+    // ì´ ê±°ë¦¬ ì´í•˜ë©´ í°ìƒ‰ íŒ¨í„´ì´ ìƒì„±ë¨
     [SerializeField] private float fullVisibilityDistance = 0.05f;
 
-    // ÀÌ °Å¸® ÀÌ»óÀÌ¸é Ç¥¸é¿¡ ÆĞÅÏÀÌ ³²Áö ¾ÊÀ½
+    // ì´ ê±°ë¦¬ ì´ìƒì´ë©´ í‘œë©´ì— íŒ¨í„´ì´ ë‚¨ì§€ ì•ŠìŒ
     [SerializeField] private float noVisibilityDistance = 0.25f;
 
-    // µå·ÎÀ×À» Çã¿ëÇÏ´Â ÃÖ¼Ò °¡½Ãµµ
+    // ë“œë¡œì‰ì„ í—ˆìš©í•˜ëŠ” ìµœì†Œ ê°€ì‹œë„
     [SerializeField, Range(0f, 1f)]
     private float minPaintVisibility = 0.15f;
 
@@ -75,16 +75,16 @@ public class LatteArtPainter : MonoBehaviour
     [Header("Milk Foam Expansion")]
     [SerializeField] private bool useFoamExpansion = true;
 
-    // °°Àº À§Ä¡¿¡ ¸Ó¹«¸¦¼ö·Ï °ÅÇ°ÀÌ Ä¿Áö´Â ¼Óµµ
+    // ê°™ì€ ìœ„ì¹˜ì— ë¨¸ë¬´ë¥¼ìˆ˜ë¡ ê±°í’ˆì´ ì»¤ì§€ëŠ” ì†ë„
     [SerializeField] private float expansionSpeed = 0.8f;
 
-    // ±âº» ºê·¯½Ã Å©±â¿¡ °öÇÒ ÃÖ´ë È®»ê ¹èÀ²
+    // ê¸°ë³¸ ë¸ŒëŸ¬ì‹œ í¬ê¸°ì— ê³±í•  ìµœëŒ€ í™•ì‚° ë°°ìœ¨
     [SerializeField] private float maxExpansionMultiplier = 4f;
 
-    // °°Àº À§Ä¡·Î ÆÇ´ÜÇÒ UV °Å¸®
+    // ê°™ì€ ìœ„ì¹˜ë¡œ íŒë‹¨í•  UV ê±°ë¦¬
     [SerializeField] private float stationaryThreshold = 0.015f;
 
-    // ¿òÁ÷ÀÌ¸é ´©Àû È®»ê·®ÀÌ ÁÙ¾îµå´Â ¼Óµµ
+    // ì›€ì§ì´ë©´ ëˆ„ì  í™•ì‚°ëŸ‰ì´ ì¤„ì–´ë“œëŠ” ì†ë„
     [Header("Foam Expansion Size")]
     [SerializeField] private float maxFoamBrushSize = 0.45f;
     [Header("Foam Expansion Reset")]
@@ -114,6 +114,11 @@ public class LatteArtPainter : MonoBehaviour
     [Header("Heart Shape")]
     [SerializeField] private float heartSizeMultiplier = 1.4f;
 
+    [Header("Motion Reactive Heart (experimental)")]
+    [SerializeField] private bool useMotionReactiveHeart = false;
+    [SerializeField] private float referenceFinishDistanceUV = 0.18f;
+    [SerializeField] private float referenceFinishSpeedUV = 0.4f;
+    [SerializeField] private float lateralSensitivity = 2f;
     private bool heartRendered = false;
 
 
@@ -134,12 +139,12 @@ public class LatteArtPainter : MonoBehaviour
                 drawingTexture
             );
 
-            Debug.Log("¶ó¶¼¾ÆÆ® ÅØ½ºÃ³ ¿¬°á ¿Ï·á");
+            Debug.Log("ë¼ë–¼ì•„íŠ¸ í…ìŠ¤ì²˜ ì—°ê²° ì™„ë£Œ");
         }
         else
         {
             Debug.LogError(
-                "LatteArtPainter: LatteSurface Renderer°¡ ¾ø½À´Ï´Ù."
+                "LatteArtPainter: LatteSurface Rendererê°€ ì—†ìŠµë‹ˆë‹¤."
             );
         }
     }
@@ -160,7 +165,7 @@ public class LatteArtPainter : MonoBehaviour
                 heartController.IsFoamSessionActive &&
                 !heartController.IsHeartFoamStarted)
             {
-                // ÇÏÆ®·Î È®Á¤µÇÁö ¾ÊÀº ÀÏ¹İ µå·ÎÀ×¸¸ º¸°ü
+                // í•˜íŠ¸ë¡œ í™•ì •ë˜ì§€ ì•Šì€ ì¼ë°˜ ë“œë¡œì‰ë§Œ ë³´ê´€
                 CommitCandidateToBase();
             }
 
@@ -181,7 +186,7 @@ public class LatteArtPainter : MonoBehaviour
 
         Vector2 uv =
             latteSurfaceMesh.WorldToSurfaceUV(hitPoint);
-        // µå·ÎÀ× °¡´É ¿©ºÎ¿Í °ü°è¾øÀÌ ÇÏÆ® ¸¶¹«¸® µ¿ÀÛ ÃßÀû
+        // ë“œë¡œì‰ ê°€ëŠ¥ ì—¬ë¶€ì™€ ê´€ê³„ì—†ì´ í•˜íŠ¸ ë§ˆë¬´ë¦¬ ë™ì‘ ì¶”ì 
         if (heartController != null)
         {
             heartController.TrackFinishMotion(uv, hitPoint);
@@ -197,10 +202,10 @@ public class LatteArtPainter : MonoBehaviour
             }
         }
 
-        // ±âÁ¸ ±â¿ï±â ¹× ³ôÀÌ ±â¹İ ºê·¯½Ã Å©±â
+        // ê¸°ì¡´ ê¸°ìš¸ê¸° ë° ë†’ì´ ê¸°ë°˜ ë¸ŒëŸ¬ì‹œ í¬ê¸°
         UpdateBrushSize(hitPoint);
 
-        // ³ôÀÌ¿¡ µû¸¥ Ç¥¸é µå·ÎÀ× ¿©ºÎ
+        // ë†’ì´ì— ë”°ë¥¸ í‘œë©´ ë“œë¡œì‰ ì—¬ë¶€
         float visibility = CalculatePaintVisibility(hitPoint);
 
         if (visibility < minPaintVisibility)
@@ -211,16 +216,16 @@ public class LatteArtPainter : MonoBehaviour
             return;
         }
 
-        // °°Àº À§Ä¡¿¡ ¸Ó¹«¸¥ ½Ã°£¿¡ µû¸¥ È®»ê ¹èÀ²
+        // ê°™ì€ ìœ„ì¹˜ì— ë¨¸ë¬´ë¥¸ ì‹œê°„ì— ë”°ë¥¸ í™•ì‚° ë°°ìœ¨
         float expansionMultiplier = CalculateFoamExpansion(uv);
 
-        // ÀÌ¹ø ÇÁ·¹ÀÓ¿¡ »ç¿ëÇÒ ºê·¯½Ã Å©±â
+        // ì´ë²ˆ í”„ë ˆì„ì— ì‚¬ìš©í•  ë¸ŒëŸ¬ì‹œ í¬ê¸°
         float originalBrushSize = brushSize;
 
         if (useFoamExpansion)
         {
-            // ¿ìÀ¯ ÁÙ±â°¡ ¾ã¾Æµµ ¸Ó¹«¸¥ ½Ã°£¿¡ µû¶ó
-            // µ¿ÀÏÇÑ ÃÖ´ë Å©±â±îÁö °ÅÇ° È®»ê
+            // ìš°ìœ  ì¤„ê¸°ê°€ ì–‡ì•„ë„ ë¨¸ë¬´ë¥¸ ì‹œê°„ì— ë”°ë¼
+            // ë™ì¼í•œ ìµœëŒ€ í¬ê¸°ê¹Œì§€ ê±°í’ˆ í™•ì‚°
             brushSize = Mathf.Lerp(
                 originalBrushSize,
                 maxFoamBrushSize,
@@ -232,7 +237,7 @@ public class LatteArtPainter : MonoBehaviour
             brushSize = originalBrushSize;
         }
 
-        // ÇÏÆ®°¡ ¿Ï¼ºµÇ¾ú´Ù¸é Ãß°¡ µå·ÎÀ× Áß´Ü
+        // í•˜íŠ¸ê°€ ì™„ì„±ë˜ì—ˆë‹¤ë©´ ì¶”ê°€ ë“œë¡œì‰ ì¤‘ë‹¨
         if (heartController != null &&
             heartController.HeartFinishDetected)
         {
@@ -243,11 +248,11 @@ public class LatteArtPainter : MonoBehaviour
             return;
         }
 
-        // ¸ÕÀú ±âÁ¸ ¿ìÀ¯ µå·ÎÀ× ½ÇÇà
+        // ë¨¼ì € ê¸°ì¡´ ìš°ìœ  ë“œë¡œì‰ ì‹¤í–‰
         PaintInterpolated(uv);
         CompositeDrawingLayers();
 
-        // ±×´ÙÀ½ °ÅÇ° »óÅÂ ¹× ¸¶¹«¸® µ¿ÀÛ ÆÇ´Ü
+        // ê·¸ë‹¤ìŒ ê±°í’ˆ ìƒíƒœ ë° ë§ˆë¬´ë¦¬ ë™ì‘ íŒë‹¨
         if (heartController != null)
         {
             heartController.UpdateFoam(
@@ -264,7 +269,7 @@ public class LatteArtPainter : MonoBehaviour
     {
         float finalBrushSize = brushSize;
 
-        // 1. ÇÇÃ³ ±â¿ï±â¿¡ µû¸¥ ºê·¯½Ã ±½±â
+        // 1. í”¼ì²˜ ê¸°ìš¸ê¸°ì— ë”°ë¥¸ ë¸ŒëŸ¬ì‹œ êµµê¸°
         if (useDynamicBrushSize && milkPourController != null)
         {
             float angle = Vector3.Angle(
@@ -285,10 +290,10 @@ public class LatteArtPainter : MonoBehaviour
             );
         }
 
-        // 2. ÇÇÃ³ ³ôÀÌ¿¡ µû¸¥ ºê·¯½Ã ±½±â
+        // 2. í”¼ì²˜ ë†’ì´ì— ë”°ë¥¸ ë¸ŒëŸ¬ì‹œ êµµê¸°
         if (useHeightBrushSize && pourPoint != null)
         {
-            // ¼ö¸é°ú PourPoint »çÀÌÀÇ ¼öÁ÷ °Å¸®
+            // ìˆ˜ë©´ê³¼ PourPoint ì‚¬ì´ì˜ ìˆ˜ì§ ê±°ë¦¬
             float distance = Mathf.Abs(
                 pourPoint.position.y - surfacePoint.y
             );
@@ -332,7 +337,7 @@ public class LatteArtPainter : MonoBehaviour
 
         ClearDrawing();
 
-        Debug.Log("LatteArt RenderTexture »ı¼º ¿Ï·á");
+        Debug.Log("LatteArt RenderTexture ìƒì„± ì™„ë£Œ");
     }
 
     private void CreateBrush()
@@ -377,14 +382,14 @@ public class LatteArtPainter : MonoBehaviour
         if (brushTexture == null)
             return;
 
-        // ¿ì¼± ¸ğµç µå·ÎÀ×À» ÈÄº¸ ·¹ÀÌ¾î¿¡ ±â·Ï
-        // ÀÌÈÄ ÇÏÆ® ÈÄº¸¿Í ÀÏ¹İ µå·ÎÀ×À» ±¸ºĞÇÒ ¿¹Á¤
+        // ìš°ì„  ëª¨ë“  ë“œë¡œì‰ì„ í›„ë³´ ë ˆì´ì–´ì— ê¸°ë¡
+        // ì´í›„ í•˜íŠ¸ í›„ë³´ì™€ ì¼ë°˜ ë“œë¡œì‰ì„ êµ¬ë¶„í•  ì˜ˆì •
         if (heartCandidateTexture != null)
         {
             PaintToTexture(heartCandidateTexture, uv);
         }
 
-        // ±âÁ¸ ÇÏÆ® ¸¶½ºÅ© ±â·Ïµµ À¯Áö
+        // ê¸°ì¡´ í•˜íŠ¸ ë§ˆìŠ¤í¬ ê¸°ë¡ë„ ìœ ì§€
         if (useHeartFoamMask &&
             heartFoamTexture != null &&
             heartController != null &&
@@ -532,7 +537,7 @@ public class LatteArtPainter : MonoBehaviour
             distance
         );
 
-        // °¡±î¿ì¸é 1, ¸Ö¾îÁö¸é 0
+        // ê°€ê¹Œìš°ë©´ 1, ë©€ì–´ì§€ë©´ 0
         return 1f - Mathf.SmoothStep(0f, 1f, t);
     }
 
@@ -602,7 +607,7 @@ public class LatteArtPainter : MonoBehaviour
 
         ClearHeartFoamTexture();
 
-        Debug.Log("Heart Foam Texture »ı¼º ¿Ï·á");
+        Debug.Log("Heart Foam Texture ìƒì„± ì™„ë£Œ");
     }
 
     private void ClearHeartFoamTexture()
@@ -656,10 +661,10 @@ public class LatteArtPainter : MonoBehaviour
             heartCandidateTexture == null)
             return;
 
-        // ÀÏ¹İ µå·ÎÀ×À» ÃÖÁ¾ ÅØ½ºÃ³¿¡ º¹»ç
+        // ì¼ë°˜ ë“œë¡œì‰ì„ ìµœì¢… í…ìŠ¤ì²˜ì— ë³µì‚¬
         Graphics.Blit(baseDrawingTexture, drawingTexture);
 
-        // ÈÄº¸ °ÅÇ°À» À§¿¡ ÇÕ¼º
+        // í›„ë³´ ê±°í’ˆì„ ìœ„ì— í•©ì„±
         RenderTexture previous = RenderTexture.active;
         RenderTexture.active = drawingTexture;
 
@@ -721,12 +726,27 @@ public class LatteArtPainter : MonoBehaviour
         if (radius <= 0f)
             return;
 
-        // ÇÏÆ®ÀÇ »ÏÁ·ÇÑ ³¡ÀÌ ¸¶¹«¸® ÀÌµ¿ ¹æÇâÀ» ÇâÇÏµµ·Ï È¸Àü
+        // í•˜íŠ¸ì˜ ë¾°ì¡±í•œ ëì´ ë§ˆë¬´ë¦¬ ì´ë™ ë°©í–¥ì„ í–¥í•˜ë„ë¡ íšŒì „
         float angle = Mathf.Atan2(direction.y, direction.x)
                       + Mathf.PI * 0.5f;
 
         float cos = Mathf.Cos(angle);
         float sin = Mathf.Sin(angle);
+
+        float lengthScale = 1f;
+        float tipSharpness = 1f;
+        float lateralWarp = 0f;
+        if (useMotionReactiveHeart)
+        {
+            lengthScale = Mathf.Clamp(
+                heartController.FinishPathDistance / Mathf.Max(0.01f, referenceFinishDistanceUV),
+                0.7f, 1.5f);
+            tipSharpness = Mathf.Clamp(
+                heartController.FinishAverageSpeed / Mathf.Max(0.01f, referenceFinishSpeedUV),
+                0.65f, 1.6f);
+            lateralWarp = Mathf.Clamp(
+                heartController.FinishMaxSideDeviation * lateralSensitivity, 0f, 0.22f);
+        }
 
         const int resolution = 256;
 
@@ -742,7 +762,7 @@ public class LatteArtPainter : MonoBehaviour
 
         Color[] pixels = new Color[resolution * resolution];
 
-        // °£´ÜÇÑ ¾ÈÆ¼¾Ù¸®¾î½ÌÀ» À§ÇÑ 2x2 »ùÇÃ¸µ
+        // ê°„ë‹¨í•œ ì•ˆí‹°ì•¨ë¦¬ì–´ì‹±ì„ ìœ„í•œ 2x2 ìƒ˜í”Œë§
         for (int y = 0; y < resolution; y++)
         {
             for (int x = 0; x < resolution; x++)
@@ -762,11 +782,18 @@ public class LatteArtPainter : MonoBehaviour
                         float dx = (px - 0.5f) * 2.7f;
                         float dy = (py - 0.5f) * 2.7f;
 
-                        // È¸ÀüµÈ ÁÂÇ¥¸¦ ÇÏÆ®ÀÇ ·ÎÄÃ ÁÂÇ¥·Î º¯È¯
+                        // íšŒì „ëœ ì¢Œí‘œë¥¼ í•˜íŠ¸ì˜ ë¡œì»¬ ì¢Œí‘œë¡œ ë³€í™˜
                         float localX = cos * dx + sin * dy;
                         float localY = -sin * dx + cos * dy;
+                        if (useMotionReactiveHeart)
+                        {
+                            float tipWeight = Mathf.Clamp01((0.5f - localY) * 0.65f);
+                            localX -= lateralWarp * tipWeight;
+                            localY /= lengthScale;
+                            localX *= Mathf.Lerp(1f, tipSharpness, tipWeight);
+                        }
 
-                        // ÇÏÆ® ÇüÅÂ¸¦ Á¤ÀÇÇÏ´Â À½ÇÔ¼ö
+                        // í•˜íŠ¸ í˜•íƒœë¥¼ ì •ì˜í•˜ëŠ” ìŒí•¨ìˆ˜
                         float a = localX * localX +
                                   localY * localY - 1f;
 
@@ -790,10 +817,10 @@ public class LatteArtPainter : MonoBehaviour
         heartTexture.SetPixels(pixels);
         heartTexture.Apply();
 
-        // ±âÁ¸ ¿øÇü °ÅÇ° ÈÄº¸ Á¦°Å
+        // ê¸°ì¡´ ì›í˜• ê±°í’ˆ í›„ë³´ ì œê±°
         ClearLayerTexture(heartCandidateTexture);
 
-        // °ÅÇ° ¹İ°æÀ» ±âÁØÀ¸·Î ÇÏÆ® Å©±â °áÁ¤
+        // ê±°í’ˆ ë°˜ê²½ì„ ê¸°ì¤€ìœ¼ë¡œ í•˜íŠ¸ í¬ê¸° ê²°ì •
         float diameter =
             radius * 2f * heartSizeMultiplier * textureSize;
 
@@ -819,11 +846,11 @@ public class LatteArtPainter : MonoBehaviour
 
         Destroy(heartTexture);
 
-        // ÃÖÁ¾ È­¸é¿¡ ¹İ¿µ
+        // ìµœì¢… í™”ë©´ì— ë°˜ì˜
         CompositeDrawingLayers();
 
         heartRendered = true;
 
-        Debug.Log("ÇÏÆ® ÇüÅÂ »ı¼º ¿Ï·á!");
+        Debug.Log("í•˜íŠ¸ í˜•íƒœ ìƒì„± ì™„ë£Œ!");
     }
 }
