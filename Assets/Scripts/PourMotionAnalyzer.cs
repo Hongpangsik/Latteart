@@ -30,6 +30,7 @@ public class PourMotionAnalyzer : MonoBehaviour
     private float velocityFilter;
     private Vector2 sessionStartUV;
     private Vector2 previousDirection;
+    private Vector2 initialTravelDirection;
     private float cumulativeTurnRadians;
     private float maxLateralDeviationUV;
     private int directionReversals;
@@ -98,11 +99,13 @@ public class PourMotionAnalyzer : MonoBehaviour
             previousDirection = movementDirection;
         }
 
-        // Signed perpendicular deviation relative to the initial movement direction.
+        // Signed perpendicular deviation from the first meaningful movement heading.
+        if (initialTravelDirection.sqrMagnitude < 0.01f && movementDirection.sqrMagnitude > 0.01f)
+            initialTravelDirection = movementDirection;
         Vector2 fromStart = currentUV - sessionStartUV;
-        if (fromStart.sqrMagnitude > 0.000001f)
+        if (initialTravelDirection.sqrMagnitude > 0.01f)
         {
-            Vector2 axis = (currentUV - sessionStartUV).normalized;
+            Vector2 axis = initialTravelDirection;
             lateralDeviationUV = Vector2.Dot(fromStart, new Vector2(-axis.y, axis.x));
             maxLateralDeviationUV = Mathf.Max(maxLateralDeviationUV, Mathf.Abs(lateralDeviationUV));
         }
@@ -113,7 +116,7 @@ public class PourMotionAnalyzer : MonoBehaviour
     {
         isSampling = true;
         currentUV = previousUV = sessionStartUV = uv;
-        movementDirection = previousDirection = Vector2.zero;
+        movementDirection = previousDirection = initialTravelDirection = Vector2.zero;
         speedUVPerSecond = cumulativeDistanceUV = stationaryTimeSeconds = 0f;
         sessionDurationSeconds = cumulativeTurnRadians = 0f;
         lateralDeviationUV = maxLateralDeviationUV = 0f;
