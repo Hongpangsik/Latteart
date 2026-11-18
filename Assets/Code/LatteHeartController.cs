@@ -35,7 +35,7 @@ public class LatteHeartController : MonoBehaviour
     [SerializeField] private float minStartDistanceFromCenter = 0.06f;
     [SerializeField] private float minEndDistanceFromCenter = 0.06f;
 
-    // °ÅÇ° Áß½É¿¡¼­ Çã¿ëÇÒ ÃÖ´ë °Å¸® (UV)
+    // ê±°í’ˆ ì¤‘ì‹¬ì—ì„œ í—ˆìš©í•  ìµœëŒ€ ê±°ë¦¬ (UV)
     [SerializeField] private float centerPassTolerance = 0.04f;
 
     private bool isFinishing;
@@ -45,6 +45,15 @@ public class LatteHeartController : MonoBehaviour
     private Vector2 finishStartUV;
     private Vector2 previousFinishUV;
     private Vector2 finishEndUV;
+    private float finishPathDistance;
+    private float finishElapsedTime;
+    private float finishMaxSideDeviation;
+    private Vector2 finishInitialDirection;
+    private float finishLastTime;
+
+    public float FinishPathDistance => finishPathDistance;
+    public float FinishAverageSpeed => finishElapsedTime > 0.001f ? finishPathDistance / finishElapsedTime : 0f;
+    public float FinishMaxSideDeviation => finishMaxSideDeviation;
 
     public Vector2 HeartFinishDirection
     {
@@ -80,7 +89,7 @@ public class LatteHeartController : MonoBehaviour
     public bool IsFoamSessionActive => isFoamSessionActive;
 
 
-    // LatteArtPainter°¡ ÇöÀç °ÅÇ° Á¤º¸¸¦ Àü´ŞÇÏ´Â ÇÔ¼ö
+    // LatteArtPainterê°€ í˜„ì¬ ê±°í’ˆ ì •ë³´ë¥¼ ì „ë‹¬í•˜ëŠ” í•¨ìˆ˜
     public void UpdateFoam(
         Vector2 currentUV,
         float currentBrushSize,
@@ -91,7 +100,7 @@ public class LatteHeartController : MonoBehaviour
         if (!isFoamSessionActive)
         {
             isFoamSessionActive = true;
-            Debug.Log("°ÅÇ° ±¸°£ ½ÃÀÛ");
+            Debug.Log("ê±°í’ˆ êµ¬ê°„ ì‹œì‘");
         }
 
         if (!hasFoamCenter)
@@ -102,7 +111,7 @@ public class LatteHeartController : MonoBehaviour
             hasFoamCenter = true;
             foamCenterLocked = false;
 
-            Debug.Log($"°ÅÇ° Áß½É ±â·Ï ½ÃÀÛ: {foamCenterUV}");
+            Debug.Log($"ê±°í’ˆ ì¤‘ì‹¬ ê¸°ë¡ ì‹œì‘: {foamCenterUV}");
         }
 
         if (!foamCenterLocked)
@@ -116,14 +125,14 @@ public class LatteHeartController : MonoBehaviour
             if (expansionAmount >= foamCenterLockThreshold)
             {
                 foamCenterLocked = true;
-                Debug.Log($"°ÅÇ° Áß½É °íÁ¤: {foamCenterUV}");
+                Debug.Log($"ê±°í’ˆ ì¤‘ì‹¬ ê³ ì •: {foamCenterUV}");
             }
             if (!isHeartFoamStarted &&
     expansionAmount >= minHeartExpansion)
             {
                 isHeartFoamStarted = true;
 
-                Debug.Log("ÇÏÆ® °ÅÇ° Çü¼º ½ÃÀÛ");
+                Debug.Log("í•˜íŠ¸ ê±°í’ˆ í˜•ì„± ì‹œì‘");
             }
         }
 
@@ -146,6 +155,9 @@ public class LatteHeartController : MonoBehaviour
         isHeartFoamStarted = false;
         isFoamSessionActive = false;
         finishEndUV = Vector2.zero;
+        finishPathDistance = finishElapsedTime = finishMaxSideDeviation = 0f;
+        finishInitialDirection = Vector2.zero;
+        finishLastTime = 0f;
     }
     private void DetectHeartFinish(
     Vector2 currentUV,
@@ -165,11 +177,13 @@ public class LatteHeartController : MonoBehaviour
             pourPoint.position.y - surfacePoint.y
         );
 
-        // ÇÇÃ³°¡ ³·¾ÆÁö¸é ¸¶¹«¸® µ¿ÀÛ ÈÄº¸ ÃÊ±âÈ­
+        // í”¼ì²˜ê°€ ë‚®ì•„ì§€ë©´ ë§ˆë¬´ë¦¬ ë™ì‘ í›„ë³´ ì´ˆê¸°í™”
         if (height < finishHeight)
         {
             isFinishing = false;
             passedFoamCenter = false;
+            finishPathDistance = finishElapsedTime = finishMaxSideDeviation = 0f;
+            finishInitialDirection = Vector2.zero;
             return;
         }
 
@@ -180,12 +194,27 @@ public class LatteHeartController : MonoBehaviour
 
             finishStartUV = currentUV;
             previousFinishUV = currentUV;
+            finishPathDistance = finishElapsedTime = finishMaxSideDeviation = 0f;
+            finishInitialDirection = Vector2.zero;
+            finishLastTime = Time.time;
             return;
         }
 
-        // ÀÌÀü À§Ä¡¿Í ÇöÀç À§Ä¡¸¦ ÀÕ´Â ¼±ºĞ¿¡¼­
-        // °ÅÇ° Áß½É±îÁöÀÇ ÃÖ´Ü °Å¸® °è»ê
+        // ì´ì „ ìœ„ì¹˜ì™€ í˜„ì¬ ìœ„ì¹˜ë¥¼ ì‡ëŠ” ì„ ë¶„ì—ì„œ
+        // ê±°í’ˆ ì¤‘ì‹¬ê¹Œì§€ì˜ ìµœë‹¨ ê±°ë¦¬ ê³„ì‚°
         Vector2 segment = currentUV - previousFinishUV;
+        float dt = Mathf.Max(0f, Time.time - finishLastTime);
+        finishLastTime = Time.time;
+        finishElapsedTime += Mathf.Min(dt, 0.2f);
+        finishPathDistance += segment.magnitude;
+        if (finishInitialDirection.sqrMagnitude < 0.01f && segment.sqrMagnitude > 0.000001f)
+            finishInitialDirection = segment.normalized;
+        if (finishInitialDirection.sqrMagnitude > 0.01f)
+        {
+            Vector2 fromStart = currentUV - finishStartUV;
+            Vector2 normal = new Vector2(-finishInitialDirection.y, finishInitialDirection.x);
+            finishMaxSideDeviation = Mathf.Max(finishMaxSideDeviation, Mathf.Abs(Vector2.Dot(fromStart, normal)));
+        }
 
         float segmentLengthSq = segment.sqrMagnitude;
 
@@ -233,39 +262,39 @@ public class LatteHeartController : MonoBehaviour
         Vector2 endDirection =
             currentUV - foamCenterUV;
 
-        // Áß½ÉÀ» ±âÁØÀ¸·Î ¼­·Î ¹İ´ëÆíÀÎÁö È®ÀÎ
+        // ì¤‘ì‹¬ì„ ê¸°ì¤€ìœ¼ë¡œ ì„œë¡œ ë°˜ëŒ€í¸ì¸ì§€ í™•ì¸
         bool crossedToOppositeSide =
             Vector2.Dot(startDirection, endDirection) < 0f;
         if (Time.frameCount % 30 == 0)
         {
             Debug.Log(
-                $"[ÇÏÆ® ¸¶¹«¸® Áø´Ü] " +
-                $"Áß½ÉÅë°ú: {passedFoamCenter} | " +
-                $"ÀÌµ¿°Å¸®: {movedDistance:F3}/{minFinishDistance:F3} | " +
-                $"½ÃÀÛ°Å¸®: {startDistance:F3}/{minStartDistanceFromCenter:F3} | " +
-                $"³¡°Å¸®: {endDistance:F3}/{minEndDistanceFromCenter:F3} | " +
-                $"¹İ´ëÆí: {crossedToOppositeSide}"
+                $"[í•˜íŠ¸ ë§ˆë¬´ë¦¬ ì§„ë‹¨] " +
+                $"ì¤‘ì‹¬í†µê³¼: {passedFoamCenter} | " +
+                $"ì´ë™ê±°ë¦¬: {movedDistance:F3}/{minFinishDistance:F3} | " +
+                $"ì‹œì‘ê±°ë¦¬: {startDistance:F3}/{minStartDistanceFromCenter:F3} | " +
+                $"ëê±°ë¦¬: {endDistance:F3}/{minEndDistanceFromCenter:F3} | " +
+                $"ë°˜ëŒ€í¸: {crossedToOppositeSide}"
             );
         }
 
-        // °ÅÇ° Áß½É ±ÙÃ³¿¡¼­ ½ÃÀÛÇß´ÂÁö
+        // ê±°í’ˆ ì¤‘ì‹¬ ê·¼ì²˜ì—ì„œ ì‹œì‘í–ˆëŠ”ì§€
         bool startedNearCenter =
             startDistance <= centerPassTolerance;
 
-        // ±âÁ¸ ¹æ½Ä: °ÅÇ° ÇÑÂÊ¿¡¼­ ¹İ´ëÂÊÀ¸·Î Åë°ú
+        // ê¸°ì¡´ ë°©ì‹: ê±°í’ˆ í•œìª½ì—ì„œ ë°˜ëŒ€ìª½ìœ¼ë¡œ í†µê³¼
         bool crossedThroughCenter =
             passedFoamCenter &&
             startDistance >= minStartDistanceFromCenter &&
             endDistance >= minEndDistanceFromCenter &&
             crossedToOppositeSide;
 
-        // Ãß°¡ ¹æ½Ä: Áß½É¿¡¼­ ½ÃÀÛÇØ ¹Ù±ùÂÊÀ¸·Î ÀÌµ¿
+        // ì¶”ê°€ ë°©ì‹: ì¤‘ì‹¬ì—ì„œ ì‹œì‘í•´ ë°”ê¹¥ìª½ìœ¼ë¡œ ì´ë™
         bool pulledOutFromCenter =
             startedNearCenter &&
             movedDistance >= minFinishDistance &&
             endDistance >= minEndDistanceFromCenter;
 
-        // µÎ ¹æ½Ä Áß ÇÏ³ª¸¦ ¸¸Á·ÇÏ¸é ¸¶¹«¸® °¨Áö
+        // ë‘ ë°©ì‹ ì¤‘ í•˜ë‚˜ë¥¼ ë§Œì¡±í•˜ë©´ ë§ˆë¬´ë¦¬ ê°ì§€
         if (crossedThroughCenter || pulledOutFromCenter)
         {
             heartFinishDetected = true;
@@ -273,8 +302,8 @@ public class LatteHeartController : MonoBehaviour
 
             Debug.Log(
                 pulledOutFromCenter
-                    ? "ÇÏÆ® ¸¶¹«¸® °¨Áö! (Áß½É¿¡¼­ ¹Ù±ùÂÊÀ¸·Î ÀÌµ¿)"
-                    : "ÇÏÆ® ¸¶¹«¸® °¨Áö! (Áß½É Åë°ú)"
+                    ? "í•˜íŠ¸ ë§ˆë¬´ë¦¬ ê°ì§€! (ì¤‘ì‹¬ì—ì„œ ë°”ê¹¥ìª½ìœ¼ë¡œ ì´ë™)"
+                    : "í•˜íŠ¸ ë§ˆë¬´ë¦¬ ê°ì§€! (ì¤‘ì‹¬ í†µê³¼)"
             );
         }
 
@@ -287,7 +316,7 @@ public class LatteHeartController : MonoBehaviour
 
         isFoamSessionActive = false;
 
-        Debug.Log("°ÅÇ° ±¸°£ Á¾·á");
+        Debug.Log("ê±°í’ˆ êµ¬ê°„ ì¢…ë£Œ");
     }
     public void TrackFinishMotion(Vector2 currentUV, Vector3 surfacePoint)
     {
