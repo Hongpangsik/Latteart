@@ -134,36 +134,28 @@ public class LatteFullPourCyclePlayModeTests
         Directory.CreateDirectory(output);
 
         int passed = 0;
-        string failures = "";
         try
         {
             for (int cycle = 1; cycle <= Cycles; cycle++)
             {
-                string stage = "setup";
-                bool ok = true;
-                string reason = "";
                 {
                     Call(painter, "ClearDrawing");
                     center = water.position;
                     // Tilt back: verify pouring is stopped before each cycle.
                     SetSpout(pitcher, spout, Quaternion.identity, center + Vector3.up * .35f);
                     yield return Frames(3);
-                    stage = "idle";
                     if (Get<bool>(pour, "IsHittingSurface")) throw new Exception("Idle unexpectedly hits surface");
 
                     // Tilt into pour and hold at center to build foam using real Update().
-                    stage = "pour";
                     SetSpout(pitcher, spout, pourRotation, center + Vector3.up * low);
                     yield return Frames(4);
                     if (!Get<bool>(pour, "IsHittingSurface")) throw new Exception("Tilted stream does not hit surface");
 
-                    stage = "foam";
                     for (int frame = 0; frame < 85; frame++) yield return null;
                     if (!Get<bool>(heart, "HasFoamCenter")) throw new Exception("Foam center was not recorded");
                     if (!Get<bool>(heart, "IsHeartFoamStarted")) throw new Exception("Foam did not reach heart state");
 
                     // Raise pitcher and pull outward, retaining tilt and surface contact.
-                    stage = "finish";
                     Vector3 start = center + Vector3.up * high;
                     SetSpout(pitcher, spout, pourRotation, start);
                     yield return Frames(3);
@@ -176,12 +168,10 @@ public class LatteFullPourCyclePlayModeTests
                     if (!Get<bool>(heart, "HeartFinishDetected"))
                         throw new Exception("Heart finish was not detected after pull-through");
 
-                    stage = "stop";
                     SetSpout(pitcher, spout, Quaternion.identity, center + Vector3.up * .35f);
                     yield return Frames(3);
                     if (Get<bool>(pour, "IsHittingSurface")) throw new Exception("Stream still hits after upright stop");
 
-                    stage = "png";
                     byte[] png = Capture(drawing);
                     if (png.Length < 256) throw new Exception("PNG output unexpectedly small");
                     string path = Path.Combine(output, "Cycle_" + cycle.ToString("D2") + ".png");
@@ -189,13 +179,13 @@ public class LatteFullPourCyclePlayModeTests
                     if (!File.Exists(path) || new FileInfo(path).Length != png.Length)
                         throw new Exception("PNG file not saved");
 
-                    stage = "reset";
                     Call(painter, "ClearDrawing");
                     yield return null;
                     if (Get<bool>(heart, "HasFoamCenter") || Get<bool>(heart, "HeartFinishDetected"))
                         throw new Exception("Reset did not clear heart state");
                 }
-                if (ok) { passed++; Debug.Log("[Full Cycle " + cycle + "/10] PASS: idle > pour > foam > finish > stop > PNG > reset"); }
+                passed++;
+                Debug.Log("[Full Cycle " + cycle + "/10] PASS: idle > pour > foam > finish > stop > PNG > reset");
             }
         }
         finally
@@ -205,6 +195,6 @@ public class LatteFullPourCyclePlayModeTests
             Call(painter, "ClearDrawing");
         }
         Debug.Log("[Full Cycle] " + passed + "/10; PNG output: " + output);
-        Assert.AreEqual(Cycles, passed, "Ten-cycle end-to-end verification failed:" + failures);
+        Assert.AreEqual(Cycles, passed, "Ten-cycle end-to-end verification failed");
     }
 }
