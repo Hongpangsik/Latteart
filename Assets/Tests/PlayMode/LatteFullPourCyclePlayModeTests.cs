@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Text;
 using System.IO;
 using System.Reflection;
 using NUnit.Framework;
@@ -143,23 +144,36 @@ public class LatteFullPourCyclePlayModeTests
         Directory.CreateDirectory(output);
 
         int passed = 0;
+        int attempted = 0;
+        int currentCycle = 0;
+        string currentStage = "setup";
+        float testStart = Time.realtimeSinceStartup;
+        float cycleStart = testStart;
+        var csv = new StringBuilder("Cycle,Result,DurationSeconds,LastStage,Note\n");
         try
         {
             for (int cycle = 1; cycle <= Cycles; cycle++)
             {
+                attempted++;
+                currentCycle = cycle;
+                cycleStart = Time.realtimeSinceStartup;
+                currentStage = "reset-before";
                 {
                     Call(painter, "ClearDrawing");
                     center = water.position;
+                    currentStage = "idle";
                     // Tilt back: verify pouring is stopped before each cycle.
                     SetSpout(pitcher, spout, Quaternion.identity, center + Vector3.up * .35f);
                     yield return Frames(3);
                     if (Get<bool>(pour, "IsHittingSurface")) throw new Exception("Idle unexpectedly hits surface");
 
+                    currentStage = "pour-start";
                     // Tilt into pour and hold at center to build foam using real Update().
                     SetSpoutWithFixedPitcherY(pitcher, spout, pourRotation, center + Vector3.up * low);
                     yield return Frames(4);
                     if (!Get<bool>(pour, "IsHittingSurface")) throw new Exception("Tilted stream does not hit surface");
 
+                    currentStage = "foam-hold";
                     // Pour continuously for at least 3 seconds per cycle, regardless of when foam starts.
                     // Follow the live milk surface so the spout never sinks as the fill level rises.
                     const float minimumPourSeconds = 3.2f;
@@ -181,6 +195,7 @@ public class LatteFullPourCyclePlayModeTests
                             " seconds; radius=" + Get<float>(heart, "FoamRadiusUV").ToString("F3") +
                             ", hitting=" + Get<bool>(pour, "IsHittingSurface"));
 
+                    currentStage = "heart-finish";
                     // Finish from the foam center towards one side.
                     // Keep the spout above the CURRENT surface (which can rise as milk is added).
                     // Distance is measured in world units; UV distance is divided by 2*referenceRadius.
@@ -210,10 +225,12 @@ public class LatteFullPourCyclePlayModeTests
                             ", spoutHeight=" + (spout.position.y - water.position.y).ToString("F3") +
                             ", plannedTravelUV=" + (finishTravel / (referenceRadius * 2f)).ToString("F3"));
 
+                    currentStage = "pour-stop";
                     SetSpout(pitcher, spout, Quaternion.identity, center + Vector3.up * .35f);
                     yield return Frames(3);
                     if (Get<bool>(pour, "IsHittingSurface")) throw new Exception("Stream still hits after upright stop");
 
+                    currentStage = "png-save";
                     byte[] png = Capture(drawing);
                     if (png.Length < 256) throw new Exception("PNG output unexpectedly small");
                     string path = Path.Combine(output, "Cycle_" + cycle.ToString("D2") + ".png");
@@ -221,22 +238,60 @@ public class LatteFullPourCyclePlayModeTests
                     if (!File.Exists(path) || new FileInfo(path).Length != png.Length)
                         throw new Exception("PNG file not saved");
 
+                    currentStage = "reset-after";
                     Call(painter, "ClearDrawing");
                     yield return null;
                     if (Get<bool>(heart, "HasFoamCenter") || Get<bool>(heart, "HeartFinishDetected"))
                         throw new Exception("Reset did not clear heart state");
                 }
                 passed++;
-                Debug.Log("[Full Cycle " + cycle + "/10] PASS: idle > pour > foam > finish > stop > PNG > reset");
+                float duration = Time.realtimeSinceStartup - cycleStart;
+                csv.AppendLine(cycle + ",PASS," + duration.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + ",complete,All checks passed");
+                Debug.Log("[Full Cycle " + cycle + "/10] PASS | duration=" + duration.ToString("F2") + "s | cumulative success=" + (100f * passed / attempted).ToString("F1") + "%");
             }
         }
         finally
         {
+            int failed = attempted - passed;
+            int notRun = Cycles - attempted;
+            if (failed > 0)
+                csv.AppendLine(currentCycle + ",FAIL," +
+                    (Time.realtimeSinceStartup - cycleStart).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) +
+                    "," + currentStage + ",See Test Runner exception");
+            float successRate = attempted > 0 ? 100f * passed / attempted : 0f;
+            float plannedRate = 100f * passed / Cycles;
+            float elapsed = Time.realtimeSinceStartup - testStart;
+            string summary = "[Full Cycle TEST RESULT] PASS=" + passed + "/" + Cycles +
+                " | FAIL=" + failed + " | NOT RUN=" + notRun +
+                " | Success rate (attempted)=" + successRate.ToString("F1") + "%" +
+                " | Planned pass rate=" + plannedRate.ToString("F1") + "%" +
+                " | Duration=" + elapsed.ToString("F2") + "s" +
+                " | Last stage=" + currentStage;
+            csv.AppendLine();
+            csv.AppendLine("Metric,Value");
+            csv.AppendLine("Planned cycles," + Cycles);
+            csv.AppendLine("Attempted cycles," + attempted);
+            csv.AppendLine("Passed cycles," + passed);
+            csv.AppendLine("Failed cycles," + failed);
+            csv.AppendLine("Not run cycles," + notRun);
+            csv.AppendLine("Success rate attempted (%)," + successRate.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
+            csv.AppendLine("Planned pass rate (%)," + plannedRate.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
+            csv.AppendLine("Total duration (seconds)," + elapsed.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+            string reportPath = Path.Combine(output, "FullCycleTestResults.csv");
+            try
+            {
+                File.WriteAllText(reportPath, csv.ToString(), new UTF8Encoding(true));
+                Debug.Log(summary + "\\nCSV: " + reportPath + "\\nPNG folder: " + output);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("CSV export failed: " + ex.Message);
+                Debug.Log(summary);
+            }
             pitcher.position = initialPosition;
             pitcher.rotation = initialRotation;
             Call(painter, "ClearDrawing");
         }
-        Debug.Log("[Full Cycle] " + passed + "/10; PNG output: " + output);
         Assert.AreEqual(Cycles, passed, "Ten-cycle end-to-end verification failed");
     }
 }
