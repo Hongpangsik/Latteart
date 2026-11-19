@@ -151,9 +151,20 @@ public class LatteFullPourCyclePlayModeTests
                     yield return Frames(4);
                     if (!Get<bool>(pour, "IsHittingSurface")) throw new Exception("Tilted stream does not hit surface");
 
-                    for (int frame = 0; frame < 85; frame++) yield return null;
-                    if (!Get<bool>(heart, "HasFoamCenter")) throw new Exception("Foam center was not recorded");
-                    if (!Get<bool>(heart, "IsHeartFoamStarted")) throw new Exception("Foam did not reach heart state");
+                    // Wait in real time: frame counts alone can be too short at high FPS.
+                    float foamWaitStart = Time.realtimeSinceStartup;
+                    const float foamTimeoutSeconds = 4f;
+                    while (!Get<bool>(heart, "IsHeartFoamStarted") &&
+                           Time.realtimeSinceStartup - foamWaitStart < foamTimeoutSeconds)
+                        yield return null;
+
+                    if (!Get<bool>(heart, "HasFoamCenter"))
+                        throw new Exception("Foam center was not recorded");
+                    if (!Get<bool>(heart, "IsHeartFoamStarted"))
+                        throw new Exception(
+                            "Foam did not reach heart state within " + foamTimeoutSeconds +
+                            " seconds; radius=" + Get<float>(heart, "FoamRadiusUV").ToString("F3") +
+                            ", hitting=" + Get<bool>(pour, "IsHittingSurface"));
 
                     // Raise pitcher and pull outward, retaining tilt and surface contact.
                     Vector3 start = center + Vector3.up * high;
