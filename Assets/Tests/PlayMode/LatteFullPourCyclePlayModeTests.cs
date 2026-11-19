@@ -142,7 +142,6 @@ public class LatteFullPourCyclePlayModeTests
                 string stage = "setup";
                 bool ok = true;
                 string reason = "";
-                try
                 {
                     Call(painter, "ClearDrawing");
                     center = water.position;
@@ -196,21 +195,7 @@ public class LatteFullPourCyclePlayModeTests
                     if (Get<bool>(heart, "HasFoamCenter") || Get<bool>(heart, "HeartFinishDetected"))
                         throw new Exception("Reset did not clear heart state");
                 }
-                catch (Exception ex)
-                {
-                    ok = false;
-                    reason = stage + ": " + ex.GetBaseException().Message;
-                }
                 if (ok) { passed++; Debug.Log("[Full Cycle " + cycle + "/10] PASS: idle > pour > foam > finish > stop > PNG > reset"); }
-                else
-                {
-                    failures += "\nCycle " + cycle + " FAIL (" + reason + ")";
-                    Debug.LogError("[Full Cycle " + cycle + "/10] " + reason);
-                    // Avoid repeated failures due to stale state.
-                    Call(painter, "ClearDrawing");
-                    SetSpout(pitcher, spout, Quaternion.identity, center + Vector3.up * .35f);
-                    yield return Frames(3);
-                }
             }
         }
         finally
