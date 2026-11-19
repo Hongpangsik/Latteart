@@ -71,6 +71,16 @@ public class LatteFullPourCyclePlayModeTests
         pitcher.position = desiredSpoutWorld - rotation * localSpout;
     }
 
+    // Keep the pitcher pivot at a fixed world Y while preserving the spout X/Z target.
+    static void SetSpoutWithFixedPitcherY(Transform pitcher, Transform spout,
+        Quaternion rotation, Vector3 desiredSpoutWorld)
+    {
+        SetSpout(pitcher, spout, rotation, desiredSpoutWorld);
+        Vector3 p = pitcher.position;
+        p.y = 2f;
+        pitcher.position = p;
+    }
+
     static byte[] Capture(RenderTexture rt)
     {
         Assert.NotNull(rt, "DrawingTexture is null");
@@ -146,7 +156,7 @@ public class LatteFullPourCyclePlayModeTests
                     if (Get<bool>(pour, "IsHittingSurface")) throw new Exception("Idle unexpectedly hits surface");
 
                     // Tilt into pour and hold at center to build foam using real Update().
-                    SetSpout(pitcher, spout, pourRotation, center + Vector3.up * low);
+                    SetSpoutWithFixedPitcherY(pitcher, spout, pourRotation, center + Vector3.up * low);
                     yield return Frames(4);
                     if (!Get<bool>(pour, "IsHittingSurface")) throw new Exception("Tilted stream does not hit surface");
 
@@ -159,7 +169,7 @@ public class LatteFullPourCyclePlayModeTests
                            (!Get<bool>(heart, "IsHeartFoamStarted") &&
                             Time.realtimeSinceStartup - foamWaitStart < maximumPourSeconds))
                     {
-                        SetSpout(pitcher, spout, pourRotation, water.position + Vector3.up * low);
+                        SetSpoutWithFixedPitcherY(pitcher, spout, pourRotation, water.position + Vector3.up * low);
                         yield return null;
                     }
 
@@ -178,7 +188,7 @@ public class LatteFullPourCyclePlayModeTests
                     float finishTravel = Mathf.Min(referenceRadius * .70f, requiredUV * referenceRadius * 2f);
                     // Finish along the negative world X axis as requested.
                     Vector3 direction = Vector3.left;
-                    SetSpout(pitcher, spout, pourRotation, water.position + Vector3.up * high);
+                    SetSpoutWithFixedPitcherY(pitcher, spout, pourRotation, water.position + Vector3.up * high);
                     yield return Frames(3);
                     bool detected = false;
                     bool hitDuringFinish = false;
@@ -186,7 +196,7 @@ public class LatteFullPourCyclePlayModeTests
                     {
                         float t = frame / 50f;
                         Vector3 target = water.position + Vector3.up * high + direction * (finishTravel * t);
-                        SetSpout(pitcher, spout, pourRotation, target);
+                        SetSpoutWithFixedPitcherY(pitcher, spout, pourRotation, target);
                         yield return null;
                         hitDuringFinish |= Get<bool>(pour, "IsHittingSurface");
                         if (Get<bool>(heart, "HeartFinishDetected")) { detected = true; break; }
