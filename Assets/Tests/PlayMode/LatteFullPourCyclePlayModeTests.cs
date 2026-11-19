@@ -126,10 +126,9 @@ public class LatteFullPourCyclePlayModeTests
         float minTravel = Get<float>(heart, "minFinishDistance");
         float referenceRadius = Mathf.Max(Get<float>(surface, "bottomRadius"), Get<float>(surface, "topRadius"));
         Vector3 center = water.position;
-        float low = Mathf.Max(.035f, Mathf.Min(.045f, finishHeight * .45f));
+        // Keep the spout higher during foam pouring, but below the finish-detection height.
+        float low = Mathf.Max(.065f, Mathf.Min(.10f, finishHeight * .75f));
         float high = Mathf.Max(finishHeight + .035f, .16f);
-        float travel = Mathf.Max(minTravel * referenceRadius * 2f * 1.6f, .14f);
-        travel = Mathf.Min(travel, referenceRadius * .45f);
         string output = Path.Combine(Application.persistentDataPath, "LatteCycleTests");
         Directory.CreateDirectory(output);
 
@@ -151,18 +150,24 @@ public class LatteFullPourCyclePlayModeTests
                     yield return Frames(4);
                     if (!Get<bool>(pour, "IsHittingSurface")) throw new Exception("Tilted stream does not hit surface");
 
-                    // Wait in real time: frame counts alone can be too short at high FPS.
+                    // Pour continuously for at least 3 seconds per cycle, regardless of when foam starts.
+                    // Follow the live milk surface so the spout never sinks as the fill level rises.
+                    const float minimumPourSeconds = 3.2f;
+                    const float maximumPourSeconds = 6f;
                     float foamWaitStart = Time.realtimeSinceStartup;
-                    const float foamTimeoutSeconds = 4f;
-                    while (!Get<bool>(heart, "IsHeartFoamStarted") &&
-                           Time.realtimeSinceStartup - foamWaitStart < foamTimeoutSeconds)
+                    while (Time.realtimeSinceStartup - foamWaitStart < minimumPourSeconds ||
+                           (!Get<bool>(heart, "IsHeartFoamStarted") &&
+                            Time.realtimeSinceStartup - foamWaitStart < maximumPourSeconds))
+                    {
+                        SetSpout(pitcher, spout, pourRotation, water.position + Vector3.up * low);
                         yield return null;
+                    }
 
                     if (!Get<bool>(heart, "HasFoamCenter"))
                         throw new Exception("Foam center was not recorded");
                     if (!Get<bool>(heart, "IsHeartFoamStarted"))
                         throw new Exception(
-                            "Foam did not reach heart state within " + foamTimeoutSeconds +
+                            "Foam did not reach heart state within " + maximumPourSeconds +
                             " seconds; radius=" + Get<float>(heart, "FoamRadiusUV").ToString("F3") +
                             ", hitting=" + Get<bool>(pour, "IsHittingSurface"));
 
@@ -171,9 +176,8 @@ public class LatteFullPourCyclePlayModeTests
                     // Distance is measured in world units; UV distance is divided by 2*referenceRadius.
                     float requiredUV = Mathf.Max(minTravel, Get<float>(heart, "minEndDistanceFromCenter")) + .035f;
                     float finishTravel = Mathf.Min(referenceRadius * .70f, requiredUV * referenceRadius * 2f);
-                    Vector3 direction = water.TransformDirection(Vector3.forward);
-                    direction.y = 0f;
-                    direction.Normalize();
+                    // Finish along the negative world X axis as requested.
+                    Vector3 direction = Vector3.left;
                     SetSpout(pitcher, spout, pourRotation, water.position + Vector3.up * high);
                     yield return Frames(3);
                     bool detected = false;
