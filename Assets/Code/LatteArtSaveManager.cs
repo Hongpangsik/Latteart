@@ -7,9 +7,12 @@ public class LatteArtSaveManager : MonoBehaviour
     [Header("References")]
     [SerializeField] private LatteArtPainter latteArtPainter;
 
+    [Header("Optional reference-pattern evaluation")]
+    [SerializeField] private PatternAnalyzer patternAnalyzer;
+
     private void Update()
     {
-        // P Å°: ¶ó¶¼¾ÆÆ® PNG ÀúÀå
+        // P í‚¤: ë¼ë–¼ì•„íŠ¸ PNG ì €ì¥
         if (Input.GetKeyDown(KeyCode.P))
         {
             SaveDrawing();
@@ -21,7 +24,7 @@ public class LatteArtSaveManager : MonoBehaviour
         if (latteArtPainter == null ||
             latteArtPainter.DrawingTexture == null)
         {
-            Debug.LogWarning("ÀúÀåÇÒ ¶ó¶¼¾ÆÆ® ÅØ½ºÃ³°¡ ¾ø½À´Ï´Ù.");
+            Debug.LogWarning("ì €ì¥í•  ë¼ë–¼ì•„íŠ¸ í…ìŠ¤ì²˜ê°€ ì—†ìŠµë‹ˆë‹¤.");
             return;
         }
 
@@ -76,7 +79,13 @@ public class LatteArtSaveManager : MonoBehaviour
 
         Destroy(texture);
 
-        Debug.Log("¶ó¶¼¾ÆÆ® ÀúÀå ¿Ï·á: " + filePath);
+        Debug.Log("ë¼ë–¼ì•„íŠ¸ ì €ì¥ ì™„ë£Œ: " + filePath);
+
+        // Score the same drawing immediately after saving, without a UI.
+        if (patternAnalyzer != null)
+            patternAnalyzer.Analyze();
+        else
+            Debug.LogWarning("ì ìˆ˜ í‰ê°€ê°€ ì—°ê²°ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤. PatternAnalyzerë¥¼ ì§€ì •í•˜ì„¸ìš”.");
     }
 
 }
