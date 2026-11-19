@@ -1341,6 +1341,7 @@ GameObject:
   - component: {fileID: 1541374777}
   - component: {fileID: 1541374778}
   - component: {fileID: 8999999993}
+  - component: {fileID: 8999999994}
   m_Layer: 0
   m_Name: LatteDrawingSystem
   m_TagString: Untagged
@@ -1457,6 +1458,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LatteArtSaveManager
   latteArtPainter: {fileID: 1541374776}
+  patternAnalyzer: {fileID: 8999999994}
 --- !u!114 &1541374778
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2353,6 +2355,24 @@ MonoBehaviour:
   stationarySpeedThreshold: 0.04
   maxSampleGapSeconds: 0.2
   logSessionSummary: 1
+--- !u!114 &8999999994
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1541374772}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f1a75d7f186a6345b2171979cd57f37, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PatternAnalyzer
+  referenceTexture: {fileID: 0}
+  latteArtPainter: {fileID: 1541374776}
+  scoreUI: {fileID: 0}
+  threshold: 0.5
+  alphaThreshold: 0.1
+  evaluationSize: 256
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
