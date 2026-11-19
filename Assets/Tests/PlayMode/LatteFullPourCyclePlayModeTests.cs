@@ -166,18 +166,35 @@ public class LatteFullPourCyclePlayModeTests
                             " seconds; radius=" + Get<float>(heart, "FoamRadiusUV").ToString("F3") +
                             ", hitting=" + Get<bool>(pour, "IsHittingSurface"));
 
-                    // Raise pitcher and pull outward, retaining tilt and surface contact.
-                    Vector3 start = center + Vector3.up * high;
-                    SetSpout(pitcher, spout, pourRotation, start);
+                    // Finish from the foam center towards one side.
+                    // Keep the spout above the CURRENT surface (which can rise as milk is added).
+                    // Distance is measured in world units; UV distance is divided by 2*referenceRadius.
+                    float requiredUV = Mathf.Max(minTravel, Get<float>(heart, "minEndDistanceFromCenter")) + .035f;
+                    float finishTravel = Mathf.Min(referenceRadius * .70f, requiredUV * referenceRadius * 2f);
+                    Vector3 direction = water.TransformDirection(Vector3.forward);
+                    direction.y = 0f;
+                    direction.Normalize();
+                    SetSpout(pitcher, spout, pourRotation, water.position + Vector3.up * high);
                     yield return Frames(3);
-                    for (int frame = 1; frame <= 25; frame++)
+                    bool detected = false;
+                    bool hitDuringFinish = false;
+                    for (int frame = 1; frame <= 50; frame++)
                     {
-                        float t = frame / 25f;
-                        SetSpout(pitcher, spout, pourRotation, start + Vector3.forward * (travel * t));
+                        float t = frame / 50f;
+                        Vector3 target = water.position + Vector3.up * high + direction * (finishTravel * t);
+                        SetSpout(pitcher, spout, pourRotation, target);
                         yield return null;
+                        hitDuringFinish |= Get<bool>(pour, "IsHittingSurface");
+                        if (Get<bool>(heart, "HeartFinishDetected")) { detected = true; break; }
                     }
-                    if (!Get<bool>(heart, "HeartFinishDetected"))
-                        throw new Exception("Heart finish was not detected after pull-through");
+                    if (!detected)
+                        throw new Exception(
+                            "Heart finish not detected; hitDuringFinish=" + hitDuringFinish +
+                            ", currentHit=" + Get<bool>(pour, "IsHittingSurface") +
+                            ", foamRadiusUV=" + Get<float>(heart, "FoamRadiusUV").ToString("F3") +
+                            ", finishHeight=" + finishHeight.ToString("F3") +
+                            ", spoutHeight=" + (spout.position.y - water.position.y).ToString("F3") +
+                            ", plannedTravelUV=" + (finishTravel / (referenceRadius * 2f)).ToString("F3"));
 
                     SetSpout(pitcher, spout, Quaternion.identity, center + Vector3.up * .35f);
                     yield return Frames(3);
