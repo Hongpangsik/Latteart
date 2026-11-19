@@ -1441,7 +1441,7 @@ MonoBehaviour:
   heartController: {fileID: 1541374778}
   useHeartFoamMask: 1
   heartSizeMultiplier: 1.4
-  useMotionReactiveHeart: 1
+  useMotionReactiveHeart: 0
   referenceFinishDistanceUV: 0.18
   referenceFinishSpeedUV: 0.4
   lateralSensitivity: 2
